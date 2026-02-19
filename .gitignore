@@ -1,0 +1,30 @@
+# OS / editor
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files created during installation
+/tmp/
+*.rpm.bak
+
+# Build artifacts (never committed — stay on the target system)
+build/
+*.ko
+*.o
+*.mod.c
+*.mod
+
+# Logs
+*.log
+install.log
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Python cache
+__pycache__/
+*.pyc
