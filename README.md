@@ -39,8 +39,8 @@ DOCA распространяется в виде бинарных RPM-паке�
 
 ```bash
 # 1. Клонировать репозиторий
-git clone https://github.com/YOUR_USERNAME/doca-alt-linux.git
-cd doca-alt-linux
+git clone https://github.com/niarbrnd/Doca-patch-alt11.git
+cd Doca-patch-alt11
 
 # 2. Запустить установку (все фазы)
 sudo ./install.sh
@@ -81,7 +81,7 @@ sudo ./install.sh --repo /path/to/doca/Packages --kernel 6.12.68-6.12-alt1
 ## Структура репозитория
 
 ```
-doca-alt-linux/
+Doca-patch-alt11/
 ├── install.sh                         # Главный скрипт установки
 ├── README.md                          # Этот файл
 │
