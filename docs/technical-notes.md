@@ -316,8 +316,14 @@ ERROR: modpost: host/nvme-core: 'nvme_reset_wq' exported twice.
 
 | Kernel | CONFIG_NVME_CORE | Result |
 |--------|-----------------|--------|
-| 6.12.68-6.12-alt1 | `=m` (loadable module) | mlnx-nvme builds and installs |
 | 6.12.34-6.12-alt1 | `=y` (built into vmlinux) | modpost error, skip mlnx-nvme |
+| 6.12.41-6.12-alt1 | `=y` (built into vmlinux) | modpost error, skip mlnx-nvme |
+| 6.12.42-6.12-alt1 | `=y` (built into vmlinux) | modpost error, skip mlnx-nvme |
+| **6.12.45-6.12-alt1** | **`=m` (loadable module)** | **mlnx-nvme builds and installs** |
+| 6.12.51..6.12.59-6.12-alt1 | `=m` | mlnx-nvme builds and installs |
+| 6.12.68-6.12-alt1 | `=m` (loadable module) | mlnx-nvme builds and installs |
+
+**The transition from `=y` to `=m` occurred between 6.12.42 and 6.12.45.**
 
 ### Detection
 
@@ -325,8 +331,23 @@ ERROR: modpost: host/nvme-core: 'nvme_reset_wq' exported twice.
 grep CONFIG_NVME_CORE /lib/modules/$(uname -r)/build/include/generated/autoconf.h
 ```
 
-- `#define CONFIG_NVME_CORE 1` → built-in, skip mlnx-nvme
-- `#define CONFIG_NVME_CORE_MODULE 1` → module, mlnx-nvme can be built
+- `#define CONFIG_NVME_CORE 1` → built-in (`=y`), skip mlnx-nvme
+- `#define CONFIG_NVME_CORE_MODULE 1` → module (`=m`), mlnx-nvme can be built
+- line absent → CONFIG_NVME_CORE not set, mlnx-nvme may still build (treat as module case)
+
+Verified ALT Linux p11 kernel config history (checked via `kernel-headers-modules` RPMs from build task archives):
+
+| Kernel version | CONFIG_NVME_CORE | mlnx-nvme |
+|----------------|-----------------|-----------|
+| 6.12.34-alt1 | `=y` | ❌ skip |
+| 6.12.41-alt1 | `=y` | ❌ skip |
+| 6.12.42-alt1 | `=y` | ❌ skip |
+| **6.12.45-alt1** | **`=m`** | **✅ build** |
+| 6.12.51-alt1 | `=m` | ✅ build |
+| 6.12.55-alt1 | `=m` | ✅ build |
+| 6.12.57-alt1 | `=m` | ✅ build |
+| 6.12.59-alt1 | `=m` | ✅ build |
+| 6.12.68-alt1 | `=m` | ✅ build |
 
 ### Impact and mitigation
 
