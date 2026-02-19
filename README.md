@@ -206,6 +206,7 @@ ibv_devinfo
 | 11 Nimbostratus (PVE) | 6.12.34-6.12-alt1 | ✅ Проверено | 9/10 модулей (mlnx-nvme пропущен, CONFIG_NVME_CORE=y) |
 | 11 Nimbostratus (PVE) | 6.12.41-6.12-alt1 | 🔶 Ожидается | 9/10 (mlnx-nvme пропущен, CONFIG_NVME_CORE=y) |
 | 11 Nimbostratus (PVE) | 6.12.42-6.12-alt1 | 🔶 Ожидается | 9/10 (mlnx-nvme пропущен, CONFIG_NVME_CORE=y) |
+| 11 Nimbostratus (PVE) | **6.12.45**-6.12-alt1 | ✅ Проверено | Все 10 DKMS модулей (включая mlnx-nvme, CONFIG_NVME_CORE=m) |
 | 11 Nimbostratus (PVE) | **≥6.12.45**-6.12-alt1 | 🔶 Ожидается | Все 10 DKMS модулей (CONFIG_NVME_CORE=m) |
 | 11 Nimbostratus (Server) | 6.12.x | 🔶 Ожидается рабочим | |
 | 10.x | 5.x / 6.x | ❌ Не тестировалось | |
