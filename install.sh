@@ -590,9 +590,18 @@ _dkms_build_all() {
     # Modules with non-obvious naming (PACKAGE_NAME differs from dir name)
     declare -A DKMS_RENAMED=(
         ["kernel-mft-4.34.1"]="kernel-mft-dkms-4.34.1:kernel-mft-dkms:4.34.1"
-        ["mlnx-nvme-25.10"]="mlnx-nvme-4.0:mlnx-nvme:4.0"
         ["mlnx-nfsrdma-25.10"]="mlnx-nfsrdma-3.4:mlnx-nfsrdma:3.4"
     )
+
+    # mlnx-nvme: skip if CONFIG_NVME_CORE=y in target kernel (built-in, symbol conflict)
+    local autoconf="/lib/modules/${TARGET_KERNEL}/build/include/generated/autoconf.h"
+    if grep -q "^#define CONFIG_NVME_CORE 1" "$autoconf" 2>/dev/null; then
+        warn "CONFIG_NVME_CORE=y in kernel $TARGET_KERNEL — skipping mlnx-nvme"
+        warn "  (nvme-core is built into vmlinux; external nvme-core.ko would conflict)"
+        warn "  Kernel's built-in nvme-rdma will be used instead."
+    else
+        DKMS_RENAMED["mlnx-nvme-25.10"]="mlnx-nvme-4.0:mlnx-nvme:4.0"
+    fi
 
     # Handle renamed modules (copy to DKMS-expected path)
     for orig_dir in "${!DKMS_RENAMED[@]}"; do
