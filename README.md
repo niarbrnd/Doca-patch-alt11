@@ -17,14 +17,15 @@ DOCA распространяется в виде бинарных RPM-паке�
 | mlnx-ofa_kernel (mlx5_core, mlx5_ib, ib_ipoib, ...) | 25.10 | DKMS |
 | iser, isert, srp, knem, xpmem, virtiofs | 25.10 | DKMS |
 | kernel-mft (MFT firmware tools kernel part) | 4.34.1 | DKMS |
-| mlnx-nvme, mlnx-nfsrdma | 25.10 | DKMS |
+| mlnx-nfsrdma | 25.10 | DKMS |
+| mlnx-nvme | 25.10 | DKMS ⚠️ только если `CONFIG_NVME_CORE=m` |
 
 ## Требования
 
 | Требование | Значение |
 |---|---|
 | Дистрибутив | ALT Linux 11 Nimbostratus (Virtualization / Server) |
-| Ядро | 6.12.x (рекомендуется 6.12.68-6.12-alt1) |
+| Ядро | 6.12.x (6.12.34 и 6.12.68 — протестированы) |
 | Архитектура | x86_64 |
 | Права | root |
 | Интернет | Нужен для загрузки gcc13, libstdc++6-14, dkms, kernel-headers |
@@ -133,11 +134,44 @@ Backport-патч MLNX OFED 0141 не учитывает это изменени
 
 ### Проблема 4: mlxfw встроен в ядро (CONFIG_MLXFW=y)
 
-В ядре 6.12.68 `mlxfw_firmware_flash` экспортируется из `vmlinux`.
-Сборка внешнего `mlxfw.ko` даёт ошибку modpost.
+В ядрах 6.12.x `mlxfw_firmware_flash` экспортируется из `vmlinux`
+(собран статически). Сборка внешнего `mlxfw.ko` даёт ошибку modpost:
+`mlxfw_firmware_flash exported twice`.
 
-**Решение**: `scripts/pre_build_wrapper.sh` определяет `CONFIG_MLXFW=y`
-и передаёт `--without-mlxfw-mod` в `./configure`.
+**Решение**: `scripts/pre_build_wrapper.sh` обнаруживает `CONFIG_MLXFW=y`
+в `autoconf.h` и передаёт `--without-mlxfw-mod` в `./configure`.
+Дополнительно `mlxfw` добавлен в `mlnx_ofed_module_disabled()` в `dkms.conf`.
+
+### Проблема 5: mlnx-nvme не собирается когда CONFIG_NVME_CORE=y
+
+В ядре **6.12.34** nvme-core встроен статически (`CONFIG_NVME_CORE=y`).
+mlnx-nvme пытается собрать замену `nvme-core.ko`, но modpost блокирует:
+
+```
+ERROR: modpost: nvme-core: 'nvme_wq' exported twice. Previous export was in vmlinux
+```
+
+**Причина**: когда `CONFIG_NVME_CORE=y`, символы nvme-core уже в `vmlinux`.
+Внешний `nvme-core.ko` с теми же символами невозможен архитектурно.
+
+**Статус в зависимости от ядра**:
+
+| Ядро | CONFIG_NVME_CORE | mlnx-nvme |
+|------|-----------------|-----------|
+| 6.12.34-6.12-alt1 | `=y` (встроен) | ❌ пропускается |
+| 6.12.41-6.12-alt1 | `=y` (встроен) | ❌ пропускается |
+| 6.12.42-6.12-alt1 | `=y` (встроен) | ❌ пропускается |
+| **≥6.12.45**-6.12-alt1 | **`=m` (модуль)** | **✅ собирается** |
+| 6.12.68-6.12-alt1 | `=m` (модуль) | ✅ собирается |
+
+Переход с `=y` на `=m` произошёл между версиями **6.12.42** и **6.12.45**.
+
+**Последствия**: для ядер ≤6.12.42 используется штатный `nvme-rdma.ko`
+из состава ядра. Базовая функциональность NVMe over RDMA сохраняется.
+Mellanox-специфичные оптимизации NVMe стека недоступны.
+
+**Решение**: скрипт автоматически определяет `CONFIG_NVME_CORE` целевого
+ядра и пропускает mlnx-nvme если nvme-core встроен.
 
 Подробнее: [docs/technical-notes.md](docs/technical-notes.md)
 
@@ -166,11 +200,19 @@ ibv_devinfo
 
 ## Совместимость
 
-| ALT Linux | Ядро | Статус |
-|-----------|------|--------|
-| 11 Nimbostratus (PVE) | 6.12.68-6.12-alt1 | ✅ Проверено |
-| 11 Nimbostratus (Server) | 6.12.x | 🔶 Ожидается рабочим |
-| 10.x | 5.x / 6.x | ❌ Не тестировалось |
+| ALT Linux | Ядро | Статус | Примечания |
+|-----------|------|--------|------------|
+| 11 Nimbostratus (PVE) | 6.12.68-6.12-alt1 | ✅ Проверено | Все 10 DKMS модулей |
+| 11 Nimbostratus (PVE) | 6.12.34-6.12-alt1 | ✅ Проверено | 9/10 модулей (mlnx-nvme пропущен, CONFIG_NVME_CORE=y) |
+| 11 Nimbostratus (PVE) | 6.12.41-6.12-alt1 | 🔶 Ожидается | 9/10 (mlnx-nvme пропущен, CONFIG_NVME_CORE=y) |
+| 11 Nimbostratus (PVE) | 6.12.42-6.12-alt1 | 🔶 Ожидается | 9/10 (mlnx-nvme пропущен, CONFIG_NVME_CORE=y) |
+| 11 Nimbostratus (PVE) | **≥6.12.45**-6.12-alt1 | 🔶 Ожидается | Все 10 DKMS модулей (CONFIG_NVME_CORE=m) |
+| 11 Nimbostratus (Server) | 6.12.x | 🔶 Ожидается рабочим | |
+| 10.x | 5.x / 6.x | ❌ Не тестировалось | |
+
+> **mlnx-nvme**: `CONFIG_NVME_CORE=y` (встроен в vmlinux) в ядрах ≤6.12.42;
+> начиная с 6.12.45 — `CONFIG_NVME_CORE=m`, mlnx-nvme собирается.
+> Скрипт определяет это автоматически.
 
 ### Поддерживаемые устройства (через DOCA)
 

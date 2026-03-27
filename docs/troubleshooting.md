@@ -108,6 +108,43 @@ Verify: `strings /usr/lib64/libstdc++.so.6 | grep CXXABI_1.3.15`
 
 ---
 
+---
+
+### Error: `nvme-core: 'nvme_wq' exported twice. Previous export was in vmlinux` (mlnx-nvme)
+
+**Affects**: kernel 6.12.34-6.12-alt1 (and any kernel with `CONFIG_NVME_CORE=y`)
+
+**Cause**: nvme-core is compiled statically into the kernel (`CONFIG_NVME_CORE=y`).
+mlnx-nvme tries to build a replacement `nvme-core.ko`, but MODPOST detects
+duplicate symbol exports and fails:
+
+```
+ERROR: modpost: host/nvme-core: 'nvme_wq' exported twice. Previous export was in vmlinux
+ERROR: modpost: host/nvme-core: 'nvme_reset_wq' exported twice. Previous export was in vmlinux
+... (many more symbols)
+```
+
+**Why it worked on 6.12.68**: On that kernel `CONFIG_NVME_CORE=m` — nvme-core
+is a loadable module, so mlnx-nvme can replace it without conflicts.
+
+**Fix**: Skip mlnx-nvme for kernels where `CONFIG_NVME_CORE=y`. The kernel's
+built-in `nvme-rdma.ko` handles NVMe over RDMA:
+
+```bash
+# Check before building
+grep CONFIG_NVME_CORE /lib/modules/$(uname -r)/build/include/generated/autoconf.h
+# → #define CONFIG_NVME_CORE 1   means skip mlnx-nvme
+# → #define CONFIG_NVME_CORE_MODULE 1   means build is OK
+
+# The install.sh script detects this automatically and skips mlnx-nvme
+```
+
+**Impact**: Mellanox-specific NVMe stack optimizations are unavailable.
+Standard kernel `nvme-rdma` + `mlx5_ib` provides full NVMe over RDMA
+functionality for ConnectX and BlueField devices.
+
+---
+
 ## apt is Broken After Installation
 
 **Symptom**: `apt-get install <anything>` fails with dependency resolution errors.
